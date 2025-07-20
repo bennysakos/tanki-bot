@@ -1,12 +1,13 @@
 import os
 import discord
+from discord import app_commands
+from discord.ext import commands
 import requests
 from keep_alive import keep_alive
 
 intents = discord.Intents.default()
-bot = discord.Bot(intents=intents)  # This only works with py-cord
-
-
+intents.message_content = False  # you don't need message content here
+bot = commands.Bot(command_prefix="!", intents=intents)
 
 TOKEN = os.environ.get("DISCORD_TOKEN")
 
@@ -66,7 +67,7 @@ class StatSelector(discord.ui.Select):
         super().__init__(placeholder="Choose a stat...", options=options)
 
     async def callback(self, interaction: discord.Interaction):
-        view = self.view
+        view: LeaderboardView = self.view
         view.stat_key = [k for k, v in valid_stats.items() if v == self.values[0]][0]
         view.stat_value = self.values[0]
         view.page = 0
@@ -78,7 +79,7 @@ class PrevButton(discord.ui.Button):
         super().__init__(style=discord.ButtonStyle.secondary, label="<", row=1)
 
     async def callback(self, interaction: discord.Interaction):
-        view = self.view
+        view: LeaderboardView = self.view
         if view.page > 0:
             view.page -= 1
         await view.send_page(interaction)
@@ -88,19 +89,30 @@ class NextButton(discord.ui.Button):
         super().__init__(style=discord.ButtonStyle.secondary, label=">", row=1)
 
     async def callback(self, interaction: discord.Interaction):
-        view = self.view
+        view: LeaderboardView = self.view
         view.page += 1
         await view.send_page(interaction)
 
-@bot.slash_command(name="top", description="Show interactive leaderboard")
-async def top(ctx):
+@bot.event
+async def on_ready():
+    print(f"Logged in as {bot.user} (ID: {bot.user.id})")
+    print("------")
+    # Sync commands with Discord
+    try:
+        synced = await bot.tree.sync()
+        print(f"Synced {len(synced)} commands.")
+    except Exception as e:
+        print(f"Error syncing commands: {e}")
+
+@bot.tree.command(name="top", description="Show interactive leaderboard")
+async def top(interaction: discord.Interaction):
     default_stat_key = "Kills"
     default_stat_value = valid_stats[default_stat_key]
     view = LeaderboardView(default_stat_key, default_stat_value, page=0)
 
     response = requests.get(f"https://tankibot.com/api/top?type={default_stat_value}")
     if response.status_code != 200:
-        await ctx.respond("Failed to fetch leaderboard.")
+        await interaction.response.send_message("Failed to fetch leaderboard.")
         return
 
     data = response.json()
@@ -110,7 +122,7 @@ async def top(ctx):
     for i, player in enumerate(page_data, start=1):
         embed.add_field(name=f"#{i} {player['name']}", value=f"{default_stat_key}: {player['score']}", inline=False)
 
-    await ctx.respond(embed=embed, view=view)
+    await interaction.response.send_message(embed=embed, view=view)
 
 keep_alive()
 bot.run(TOKEN)
