@@ -1,11 +1,11 @@
 import os
 import discord
-from discord.ext import commands
 import requests
 from keep_alive import keep_alive
 
 intents = discord.Intents.default()
-bot = discord.Bot(intents=intents)
+bot = discord.Bot(intents=intents)  # This only works with py-cord
+
 
 
 TOKEN = os.environ.get("DISCORD_TOKEN")
