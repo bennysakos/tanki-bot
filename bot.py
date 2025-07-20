@@ -5,7 +5,8 @@ import requests
 from keep_alive import keep_alive
 
 intents = discord.Intents.default()
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = discord.Bot(intents=intents)
+
 
 TOKEN = os.environ.get("DISCORD_TOKEN")
 
